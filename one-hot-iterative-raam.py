@@ -34,6 +34,21 @@ def chunks(l, n):
 	for i in range(0, len(l), n):
 		yield l[i:i + n]
 
+''' If the given vector (an np array) passes some terminal test, return the one-hot vector
+ it most likely represents along with 'TRUE', else, return the given vector and 'FALSE'.'''
+def good_or_bad(vec):
+	affordance = 0.20 # How much the given value can differ from 0 or 1 to be considered terminal
+	out_vec = np.array(vec)
+	np.copyto(out_vec, vec)
+	for x in np.nditer(out_vec, op_flags=['readwrite']):
+		if 0 - affordance <= x <= affordance:
+			x[...] = 0
+		elif 1 - affordance <= x <= 1 + affordance:
+			x[...] = 1
+		else:
+			return (False, vec)
+	return (True, out_vec)
+
 input_size = 52 # 2 letters, 26 bits each, 1-hot
 
 input1 = tf.placeholder(tf.float32, [None, input_size/2]) # first letter
@@ -66,6 +81,12 @@ for i in range(25000):
 	if i % 500 == 0:
 		print("epoch: " + str(i))
 		print(my_loss)
+		good, answer = good_or_bad(my_decoded)
+		if good:
+			print(good)
+			print(answer)
+		else:
+			print(good)
 
 #correct_prediction = tf.equal(input_full, decoded2)
 
