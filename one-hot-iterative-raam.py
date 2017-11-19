@@ -87,6 +87,3 @@ for i in range(25000):
 			print(answer)
 		else:
 			print(good)
-
-#correct_prediction = tf.equal(input_full, decoded2)
-
