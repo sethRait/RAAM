@@ -69,7 +69,8 @@ tf.global_variables_initializer().run()
 
 training_set = generate_samples(input_size//2)
 
-for i in range(25000):
+# Training loop
+for i in range(20000):
 	#inputs = training_set[i % len(training_set)]
 	x = np.array([training_set[j][0] for j in range(training_set.shape[0])])
 	y = np.array([training_set[j][1] for j in range(training_set.shape[0])])
@@ -77,13 +78,22 @@ for i in range(25000):
 	random.shuffle(y)
 
 #	_, my_loss, my_decoded, original = sess.run([train_step, loss, decoded2, input_full], feed_dict={input1:inputs[0]], input2:[inputs[1]]})
-	_, my_loss, my_decoded, = sess.run([train_step, loss, decoded2], feed_dict={input1:x, input2:y})
+	_, my_loss, _, = sess.run([train_step, loss, decoded2], feed_dict={input1:x, input2:y})
 	if i % 500 == 0:
 		print("epoch: " + str(i))
-		print(my_loss)
+		print("loss: " + str(my_loss))
+
+# Testing loop
+for i in range(20000, 25000):
+	x = np.array([training_set[j][0] for j in range (training_set.shape[0])])
+	y = np.array([training_set[j][1] for j in range (training_set.shape[0])])
+	random.shuffle(x)
+	random.shuffle(y)
+	
+	my_loss, my_decoded, = sess.run([loss, decoded2], feed_dict={input1:x, input2:y})
+	if i % 250 == 0:
+		print("loss: " + str(my_loss))
 		good, answer = good_or_bad(my_decoded)
+		print("reconstructed? " + str(good))
 		if good:
-			print(good)
 			print(answer)
-		else:
-			print(good)
