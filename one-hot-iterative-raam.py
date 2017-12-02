@@ -1,3 +1,4 @@
+# Encodes and decodes pairs of one-hot vectors
 from __future__ import division
 import tensorflow as tf
 import numpy as np
