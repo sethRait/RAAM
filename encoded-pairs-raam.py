@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 import random
 
-input_size = 16 # 2 letters, input_size bits each, 1-hot
+input_size = 8 # 2 letters, input_size bits each, 1-hot
 test_epochs = 2000
 learning_rate = 0.002
 
@@ -14,9 +14,9 @@ def make_fc(input_tensor, output_size, name, mode):
 	W = tf.get_variable(name + "weights",[input_tensor.get_shape().as_list()[1],output_size],tf.float32,
 			                                      tf.random_normal_initializer(stddev=0.1))
 	b = tf.Variable(tf.zeros([output_size]))
-	if mode == 1:
+	if mode == 1: # sigmoid
 		x = tf.nn.sigmoid(tf.matmul(input_tensor, W) + b)
-	else:
+	else: # relu
 		x = tf.nn.relu(tf.matmul(input_tensor, W) + b)
 	return x
 
@@ -48,9 +48,9 @@ input_full = tf.concat([input1, input2], 1) # not 2None x 6
 
 # layers
 encoded = make_fc(input_full, input_size, "encoder", 1)
-encoded2 = make_fc(encoded, 3*input_size/4, "second_hidden", 2)
-encoded3 = make_fc(encoded2, input_size/2, "third_hidden", 2)
-decoded1 = make_fc(encoded3, 3*input_size/4, "decoder", 2)
+encoded2 = make_fc(encoded, 3*input_size/4, "second_hidden", 1)
+encoded3 = make_fc(encoded2, input_size/2, "third_hidden", 1)
+decoded1 = make_fc(encoded3, 3*input_size/4, "decoder", 1)
 decoded2 = make_fc(decoded1, input_size, "second_decoder", 1)
 
 loss = tf.losses.mean_squared_error(labels=input_full, predictions=decoded2)
@@ -64,19 +64,19 @@ x = np.array([training_set[j][0] for j in range(training_set.shape[0])])
 y = np.array([training_set[j][1] for j in range(training_set.shape[0])])
 
 # Train on terminals
-print("TRAINING TERMINALS")
-for i in range(10000):
-	np.random.shuffle(x)
-	np.random.shuffle(y)
-
-	_, train_loss, _, = sess.run([train_step, loss, decoded2], feed_dict={input1:x, input2:y})
-	if i % 500 == 0:
-		print("epoch: " + str(i))
-		print("loss: " + str(train_loss))
+#print("TRAINING TERMINALS")
+#for i in range(10000):
+#	np.random.shuffle(x)
+#	np.random.shuffle(y)
+#
+#	_, train_loss, _, = sess.run([train_step, loss, decoded2], feed_dict={input1:x, input2:y})
+#	if i % 500 == 0:
+#		print("epoch: " + str(i))
+#		print("loss: " + str(train_loss))
 
 # Alternate training on terminals and intermediary values
 print("\nTRAINING ENCODED PAIRS")
-for i in range(12000):
+for i in range(25000):
 	np.random.shuffle(x)
 	np.random.shuffle(y)
 	encoded_pairs_A = sess.run(encoded3, feed_dict={input1:x, input2:y})
@@ -85,11 +85,11 @@ for i in range(12000):
 	encoded_pairs_B = sess.run(encoded3, feed_dict={input1:x, input2:y})
 
 	_, intermediary_loss, _, = sess.run([train_step, loss, decoded2], feed_dict={input1:encoded_pairs_A, input2:encoded_pairs_B})
-#	_, terminal_loss, _, = sess.run([train_step, loss, decoded2], feed_dict={input1:x, input2:y})
-	if i % 500 == 0:
+	_, terminal_loss, _, = sess.run([train_step, loss, decoded2], feed_dict={input1:x, input2:y})
+	if i % 750 == 0:
 		print("epoch: " + str(i))
 		print("intermediary loss: " + str(intermediary_loss))
-#		print("terminal loss: " + str(terminal_loss))
+		print("terminal loss: " + str(terminal_loss))
 		print("")
 
 # Testing loop
@@ -108,15 +108,12 @@ for i in range(test_epochs):
 		print(str((i / test_epochs) * 100) + " percent complete")
 
 	# Reporting
-	decode_iter = np.nditer(my_decoded)
-	orig_iter = np.nditer(orig)
-	iter_count = 0
-	while not orig_iter.finished:
-		divisor += 1
-		if np.allclose(orig_iter[0], decode_iter[0], atol=0.2):
-			total_correct += 1
-		orig_iter.iternext()
-		decode_iter.iternext()
+        for original, decode in zip(orig, my_decoded):
+            divisor += 1
+            if np.allclose(original, decode, atol=0.2):
+                total_correct += 1
+
 percent_correct = (total_correct / divisor) * 100
 print("total correct: " + str(total_correct))
 print(str(percent_correct) + " percent correct")
+
