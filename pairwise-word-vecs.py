@@ -29,7 +29,9 @@ def generate_samples():
 	sentences = parse_sentences()
 	sentence_dict = {}
 	for sentence in sentences:
-		sentence_dict[sentence] = get_vecs_from_sentence(sentence, word_dict)
+		res = get_vecs_from_sentence(sentence, word_dict)
+		if res is not None:
+			sentence_dict[sentence] = res
 	return sentence_dict	
 
 # Returns an np array of vectors representing the words of the given sentence
@@ -53,8 +55,9 @@ def parse_sentences():
 	sentences = []
 	with open(sentence_filepath) as fp:
 		tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
-		data = fp.read()
-	return data
+		#data = fp.read()
+		sentences = nltk.sent_tokenize(fp.read().decode('utf-8'))
+	return sentences
 
 inputs = tf.placeholder(tf.float32, [None, input_size]) # word vector
 
@@ -68,7 +71,7 @@ train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 sess = tf.InteractiveSession()
 tf.global_variables_initializer().run()
 
-sentence_dict = generate_samples() # used to be training_set
+sentence_dict = generate_samples()
 
 # Train on terminals
 print("TRAINING TERMINALS")
@@ -102,7 +105,6 @@ print("TESTING")
 total_correct = 0
 for i in range(3*len(sentence_dict)//4, len(sentence_dict)):
 	test_loss, my_decoded, orig = sess.run([loss, decoded, inputs], feed_dict={inputs:sentence_dict.values()[i]})
-
 	if i % (test_epochs / 10) == 0:
 		print(str((i / test_epochs) * 100) + " percent complete")
 
