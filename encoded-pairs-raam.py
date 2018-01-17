@@ -63,6 +63,9 @@ training_set = generate_samples(input_size//2)
 x = np.array([training_set[j][0] for j in range(training_set.shape[0])])
 y = np.array([training_set[j][1] for j in range(training_set.shape[0])])
 
+print(x)
+quit()
+
 # Train on terminals
 #print("TRAINING TERMINALS")
 #for i in range(10000):

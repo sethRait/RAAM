@@ -6,10 +6,11 @@ import tensorflow as tf
 import numpy as np
 import random
 import nltk.data
+import re
 
 input_size = 300 
 test_epochs = 2000
-learning_rate = 0.002
+learning_rate = 0.0005
 vector_filepath = "wiki-news-300d-1M.vec" # File of word vectors
 sentence_filepath = "austen.txt"
 
@@ -36,26 +37,36 @@ def generate_samples():
 
 # Returns an np array of vectors representing the words of the given sentence
 def get_vecs_from_sentence(sentence, word_dict):
-	arr = []
-	for s in sentence:
-		arr.append(word_dict.get(s))
+	arr = [] 
+	#for word in re.split('[.,;?:]', sentence): #sentence.split():
+	for word in re.findall(r"[\w]+|[^\s\w]", sentence):
+		cur = word_dict.get(word.lower())
+		if cur is None:
+			return None
+		arr.append(cur)
 	return np.array(arr)	
 	
 # Parses the file containing vector representations of words
 def parse_word_vecs():
-    dictionary = {}
-    with open(vector_filepath) as fp:
-        next(fp) # skip header
-        for line in fp:
-            dictionary[line.split(' ', 1)[0]] = np.fromstring(line[1:], dtype=float, count = -1, sep=" ")
+	print("Parsing word vectors")
+	i = 1
+	dictionary = {}
+	with open(vector_filepath) as fp:
+		next(fp) # skip header
+		for line in fp:
+			parsed = line.lower().split(' ', 1)
+			dictionary[parsed[0]] = np.fromstring(parsed[1], dtype = float, count = input_size, sep = " ")
+			i += 1
+			if i % 100000 == 0:
+				print(str((i/1000000)*100) + " percent complete")
 	return dictionary
 
 # Parses the file containing the training and testing sentences
 def parse_sentences():
+	print("Parsing input sentences")
 	sentences = []
 	with open(sentence_filepath) as fp:
 		tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
-		#data = fp.read()
 		sentences = nltk.sent_tokenize(fp.read().decode('utf-8'))
 	return sentences
 
@@ -72,12 +83,11 @@ sess = tf.InteractiveSession()
 tf.global_variables_initializer().run()
 
 sentence_dict = generate_samples()
-
 # Train on terminals
 print("TRAINING TERMINALS")
-for i in range(3*len(sentence_dict)//4): # Use 3/4 the input to train and 1/4 to validate
-	_, train_loss, _, = sess.run([train_step, loss, decoded], feed_dict={inputs:sentence_dict.values()[i]})
-	if i % 500 == 0:
+for i in range(25000):
+	_, train_loss, _, = sess.run([train_step, loss, decoded], feed_dict={inputs:sentence_dict.values()[i%len(sentence_dict)]})
+	if i % 2500 == 0:
 		print("epoch: " + str(i))
 		print("loss: " + str(train_loss))
 
@@ -103,8 +113,10 @@ for i in range(3*len(sentence_dict)//4): # Use 3/4 the input to train and 1/4 to
 divisor = 0
 print("TESTING")
 total_correct = 0
-for i in range(3*len(sentence_dict)//4, len(sentence_dict)):
-	test_loss, my_decoded, orig = sess.run([loss, decoded, inputs], feed_dict={inputs:sentence_dict.values()[i]})
+for i in range(test_epochs//100):
+	test_loss, my_decoded, orig = sess.run([loss, decoded, inputs], feed_dict={inputs:sentence_dict.values()[i % len(sentence_dict)]})
+	print(my_decoded)
+	print(orig)
 	if i % (test_epochs / 10) == 0:
 		print(str((i / test_epochs) * 100) + " percent complete")
 
