@@ -81,8 +81,7 @@ decoded = make_fc(center, 3*input_size//2, "decoder", 2)
 decoded2 = make_fc(decoded, input_size, "second_decoder", 2)
 decoded2r = make_fc(decoded2, input_size, "second_decoderr", 1)
 
-#loss = tf.losses.mean_squared_error(labels=inputs, predictions=decoded2r)
-loss = tf.reduce_mean(tf.pow(inputs - decoded2r, 2))
+loss = tf.losses.mean_squared_error(labels=inputs, predictions=decoded2r)
 train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 sess = tf.InteractiveSession()
 tf.global_variables_initializer().run()
@@ -90,7 +89,7 @@ tf.global_variables_initializer().run()
 sentence_dict = generate_samples()
 # Train on terminals
 print("Training on %d sentences" % len(sentence_dict))
-for i in range(50000):
+for i in range(40000):
 	_, train_loss, _, = sess.run([train_step, loss, decoded2r], feed_dict={inputs:sentence_dict.values()[i%len(sentence_dict)]})
 	if i % 2500 == 0:
 		print("epoch: " + str(i))
