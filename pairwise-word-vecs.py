@@ -7,10 +7,11 @@ import numpy as np
 import random
 import nltk.data
 import re
+import math
 
 input_size = 300 
-test_epochs = 2000
-learning_rate = 0.0005
+test_epochs = 1500
+learning_rate = 0.00001
 vector_filepath = "wiki-news-300d-1M.vec" # File of word vectors
 sentence_filepath = "austen.txt"
 
@@ -38,7 +39,6 @@ def generate_samples():
 # Returns an np array of vectors representing the words of the given sentence
 def get_vecs_from_sentence(sentence, word_dict):
 	arr = [] 
-	#for word in re.split('[.,;?:]', sentence): #sentence.split():
 	for word in re.findall(r"[\w]+|[^\s\w]", sentence):
 		cur = word_dict.get(word.lower())
 		if cur is None:
@@ -74,19 +74,24 @@ inputs = tf.placeholder(tf.float32, [None, input_size]) # word vector
 
 # layers
 encoded = make_fc(inputs, input_size, "encoder", 1)
-center = make_fc(encoded, input_size/2, "center", 1)
-decoded = make_fc(center, input_size, "decoder", 1)
+encodedr = make_fc(encoded, input_size, "encoderr", 2)
+encoded2 = make_fc(encodedr, 3*input_size//4, "second_encoder", 2)
+center = make_fc(encoded2, input_size/2, "center", 2)
+decoded = make_fc(center, 3*input_size//2, "decoder", 2)
+decoded2 = make_fc(decoded, input_size, "second_decoder", 2)
+decoded2r = make_fc(decoded2, input_size, "second_decoderr", 1)
 
-loss = tf.losses.mean_squared_error(labels=inputs, predictions=decoded)
+#loss = tf.losses.mean_squared_error(labels=inputs, predictions=decoded2r)
+loss = tf.reduce_mean(tf.pow(inputs - decoded2r, 2))
 train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 sess = tf.InteractiveSession()
 tf.global_variables_initializer().run()
 
 sentence_dict = generate_samples()
 # Train on terminals
-print("TRAINING TERMINALS")
-for i in range(25000):
-	_, train_loss, _, = sess.run([train_step, loss, decoded], feed_dict={inputs:sentence_dict.values()[i%len(sentence_dict)]})
+print("Training on %d sentences" % len(sentence_dict))
+for i in range(50000):
+	_, train_loss, _, = sess.run([train_step, loss, decoded2r], feed_dict={inputs:sentence_dict.values()[i%len(sentence_dict)]})
 	if i % 2500 == 0:
 		print("epoch: " + str(i))
 		print("loss: " + str(train_loss))
@@ -110,23 +115,21 @@ for i in range(25000):
 #		print("")
 
 # Testing loop
-divisor = 0
-print("TESTING")
+num_vectors_total = 0
 total_correct = 0
-for i in range(test_epochs//100):
-	test_loss, my_decoded, orig = sess.run([loss, decoded, inputs], feed_dict={inputs:sentence_dict.values()[i % len(sentence_dict)]})
-	print(my_decoded)
-	print(orig)
+print("TESTING")
+for i in range(test_epochs):
+	test_loss, my_decoded, orig = sess.run([loss, decoded2r, inputs], feed_dict={inputs:sentence_dict.values()[i % len(sentence_dict)]})
+
 	if i % (test_epochs / 10) == 0:
 		print(str((i / test_epochs) * 100) + " percent complete")
 
 	# Reporting
-        for original, decode in zip(orig, my_decoded):
-            divisor += 1
-            if np.allclose(original, decode, atol=0.2):
-                total_correct += 1
+	for original, decode in zip(orig, my_decoded):
+		num_vectors_total += 1
+		for truth, gen in zip(original, decode):
+			if abs(truth-gen) <= 0.1:
+				total_correct += 1
 
-percent_correct = (total_correct / divisor) * 100
-print("total correct: " + str(total_correct))
-print(str(percent_correct) + " percent correct")
-
+percent_correct = ((total_correct / num_vectors_total) * 100) / 300
+print(percent_correct)
