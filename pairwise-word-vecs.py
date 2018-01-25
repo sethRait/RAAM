@@ -92,19 +92,19 @@ def parse_word_vecs(vectors, input_size):
 # Parses the file containing the training and testing sentences
 def parse_sentences(corpus):
 	print("Parsing input sentences")
-	sentences = []
 	with open(corpus) as fp:
-		tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+		nltk.data.load('tokenizers/punkt/english.pickle')
 		sentences = nltk.sent_tokenize(fp.read().decode('utf-8'))
 	return sentences
 
 
 def train(sess, optimizer, data, encode, loss, input1, input2):
 	print("Training")
-	for sentence in data:
-		train_loss = 0.0
-		while len(sentence) != 1:
-			train_loss, sentence = train_inner(sess, optimizer, encode, sentence, loss, input1, input2)
+	for i in range(200):
+		for sentence in data:
+			train_loss = 0.0
+			while len(sentence) != 1:
+				train_loss, sentence = train_inner(sess, optimizer, encode, sentence, loss, input1, input2)
 		print("Loss: " + str(train_loss))
 
 def train_inner(sess, optimizer, encode, ins, loss, input1, input2):
