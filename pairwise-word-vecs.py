@@ -102,6 +102,7 @@ def train(sess, optimizer, data, encode, loss, input1, input2):
 	print("Training")
 	for i in range(200):
 		for sentence in data:
+			print("new sentence")
 			train_loss = 0.0
 			while len(sentence) != 1:
 				train_loss, sentence = train_inner(sess, optimizer, encode, sentence, loss, input1, input2)
@@ -111,15 +112,14 @@ def train_inner(sess, optimizer, encode, ins, loss, input1, input2):
 	outs = []
 	while ins.shape[0] > 0:
 		if ins.shape[0] >= 2:
-			a, b = ins[0], ins[1] # pop two values from the list
-			a = a.reshape(1, 300)
-			b = b.reshape(1, 300)
+			_, train_loss, encoded = sess.run([optimizer, loss, encode],
+											  feed_dict={input1:ins[0].reshape(1,300),
+														 input2:ins[1].reshape(1,300)})
 			ins = ins[2:]
-			_, train_loss, encoded = sess.run([optimizer, loss, encode], feed_dict={input1:a, input2:b})
 			outs.append(encoded)
 		else: # If there's only one item left, add it to the output to use next round
 			outs.append((ins[0]).reshape(1, 300))
-			ins = ins[1:]
+			break
 	outs = np.array(outs)
 	outs = outs.reshape(outs.shape[0], 300)
 	return train_loss, outs
