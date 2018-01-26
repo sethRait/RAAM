@@ -14,8 +14,8 @@ def main():
 	input_size = 2 * (word_vector_size + padding)
 	test_epochs = 1500
 	learning_rate = 0.00002
-	vectors = "wiki-news-300d-1M.vec" # File of word vectors
-	corpus = "austen.txt"
+	vectors = "data/wiki-news-300d-1M.vec" # File of word vectors
+	corpus = "data/austen.txt"
 
 	input1 = tf.placeholder(tf.float32, [None, input_size/2], name="first_half") # first word
 	input2 = tf.placeholder(tf.float32, [None, input_size/2], name="second_half") # second word
