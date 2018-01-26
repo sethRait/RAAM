@@ -9,12 +9,12 @@ import re
 import math
 
 def main():
-	word_vector_size = 300
+	word_vector_size = 8
 	padding = word_vector_size // 2
 	input_size = 2 * (word_vector_size + padding)
 	test_epochs = 1500
 	learning_rate = 0.00002
-	vectors = "data/wiki-news-300d-1M.vec" # File of word vectors
+	vectors = "data/test_vectors.vec" # File of word vectors
 	corpus = "data/austen.txt"
 
 	input1 = tf.placeholder(tf.float32, [None, input_size/2], name="first_half") # first word
@@ -114,6 +114,7 @@ def train_inner(sess, optimizer, encode, decode, ins, loss, input1, input2, size
 	outs = []
 	while ins.shape[0] > 0:
 		if ins.shape[0] >= 2:
+			print(ins[0])
 			_, train_loss, encoded, _ = sess.run([optimizer, loss, encode, decode],
 											  feed_dict={input1:ins[0].reshape(1,size//2),
 														 input2:ins[1].reshape(1,size//2)})
