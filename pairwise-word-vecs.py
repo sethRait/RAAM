@@ -9,9 +9,11 @@ import re
 import math
 
 def main():
-	input_size = 300 * 2 
+	word_vector_size = 300
+	padding = word_vector_size // 2
+	input_size = 2 * (word_vector_size + padding)
 	test_epochs = 1500
-	learning_rate = 0.00001
+	learning_rate = 0.00002
 	vectors = "wiki-news-300d-1M.vec" # File of word vectors
 	corpus = "austen.txt"
 
@@ -28,9 +30,9 @@ def main():
 	sess = tf.InteractiveSession()
 	tf.global_variables_initializer().run()
 
-	sentence_dict = generate_samples(vectors, corpus, input_size//2)
+	sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
 
-	train(sess, train_step, sentence_dict.values(), center, loss, input1, input2)
+	train(sess, train_step, sentence_dict.values(), center, output_layer, loss, input1, input2, input_size)
 	test(sess, test_epochs, sentence_dict.values(), output_layer, loss)
 
 def generate_layers(inputs, input_size):
@@ -54,8 +56,8 @@ def make_fc(input_tensor, output_size, name, mode):
 	return x
 
 # Returns a dictionary of sentances and a list of their vector representation
-def generate_samples(vectors, corpus, input_size):
-	word_dict = parse_word_vecs(vectors, input_size)
+def generate_samples(vectors, corpus, vec_size, pad):
+	word_dict = parse_word_vecs(vectors, vec_size, pad)
 	sentences = parse_sentences(corpus)
 	sentence_dict = {}
 	for sentence in sentences:
@@ -67,7 +69,7 @@ def generate_samples(vectors, corpus, input_size):
 # Returns an np array of vectors representing the words of the given sentence
 def get_vecs_from_sentence(sentence, word_dict):
 	arr = [] 
-	for word in re.findall(r"[\w]+|[^\s\w]", sentence):
+	for word in re.findall(r"[\w]+|[^\s\w]", sentence): # Each punctuation mark should be its own vector
 		cur = word_dict.get(word.lower())
 		if cur is None:
 			return None
@@ -75,7 +77,7 @@ def get_vecs_from_sentence(sentence, word_dict):
 	return np.array(arr)	
 	
 # Parses the file containing vector representations of words
-def parse_word_vecs(vectors, input_size):
+def parse_word_vecs(vectors, vec_size, pad):
 	print("Parsing word vectors")
 	i = 1
 	dictionary = {}
@@ -83,7 +85,8 @@ def parse_word_vecs(vectors, input_size):
 		next(fp) # skip header
 		for line in fp:
 			parsed = line.lower().split(' ', 1)
-			dictionary[parsed[0]] = np.fromstring(parsed[1], dtype = float, count = input_size, sep = " ")
+			vec = np.fromstring(parsed[1], dtype = float, count = vec_size, sep = " ")
+			dictionary[parsed[0]] = np.pad(vec, (0, pad), 'constant') # right pad the vector with 0
 			i += 1
 			if i % 10000 == 0: # Only use the first 10,000 words
 				break
@@ -98,30 +101,29 @@ def parse_sentences(corpus):
 	return sentences
 
 
-def train(sess, optimizer, data, encode, loss, input1, input2):
+def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
 	print("Training")
 	for i in range(200):
 		for sentence in data:
-			print("new sentence")
 			train_loss = 0.0
 			while len(sentence) != 1:
-				train_loss, sentence = train_inner(sess, optimizer, encode, sentence, loss, input1, input2)
+				train_loss, sentence = train_inner(sess, optimizer, encode, decode, sentence, loss, input1, input2, size)
 		print("Loss: " + str(train_loss))
 
-def train_inner(sess, optimizer, encode, ins, loss, input1, input2):
+def train_inner(sess, optimizer, encode, decode, ins, loss, input1, input2, size):
 	outs = []
 	while ins.shape[0] > 0:
 		if ins.shape[0] >= 2:
-			_, train_loss, encoded = sess.run([optimizer, loss, encode],
-											  feed_dict={input1:ins[0].reshape(1,300),
-														 input2:ins[1].reshape(1,300)})
-			ins = ins[2:]
+			_, train_loss, encoded, _ = sess.run([optimizer, loss, encode, decode],
+											  feed_dict={input1:ins[0].reshape(1,size//2),
+														 input2:ins[1].reshape(1,size//2)})
+			ins = ins[2:] # pop the top two
 			outs.append(encoded)
 		else: # If there's only one item left, add it to the output to use next round
-			outs.append((ins[0]).reshape(1, 300))
+			outs.append((ins[0]).reshape(1, size//2))
 			break
 	outs = np.array(outs)
-	outs = outs.reshape(outs.shape[0], 300)
+	outs = outs.reshape(outs.shape[0], size//2)
 	return train_loss, outs
 
 # Testing loop
