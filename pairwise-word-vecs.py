@@ -12,8 +12,11 @@ def main():
 	word_vector_size = 8
 	padding = word_vector_size // 2
 	input_size = 2 * (word_vector_size + padding)
-	test_epochs = 1500
 	learning_rate = 0.00002
+
+	print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
+	print("Learning rate: %d", learning_rate)
+
 	vectors = "data/test_vectors.vec" # File of word vectors
 	corpus = "data/austen.txt"
 
@@ -33,7 +36,6 @@ def main():
 	sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
 
 	train(sess, train_step, sentence_dict.values(), center, output_layer, loss, input1, input2, input_size)
-	test(sess, test_epochs, sentence_dict.values(), output_layer, loss)
 
 def generate_layers(inputs, input_size):
 	encoded = make_fc(inputs, input_size, "encoder", 1)
@@ -102,19 +104,20 @@ def parse_sentences(corpus):
 
 
 def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
-	print("Training")
-	for i in range(200):
+	print("Training on %d sentences per epoch" % len(data))
+	for i in range(250):
 		for sentence in data:
 			train_loss = 0.0
 			while len(sentence) != 1:
 				train_loss, sentence = train_inner(sess, optimizer, encode, decode, sentence, loss, input1, input2, size)
-		print("Loss: " + str(train_loss))
+		if i % 5 == 0:
+			print("Epoch: " + str(i))
+			print("Loss: " + str(train_loss))
 
 def train_inner(sess, optimizer, encode, decode, ins, loss, input1, input2, size):
 	outs = []
 	while ins.shape[0] > 0:
 		if ins.shape[0] >= 2:
-			print(ins[0])
 			_, train_loss, encoded, _ = sess.run([optimizer, loss, encode, decode],
 											  feed_dict={input1:ins[0].reshape(1,size//2),
 														 input2:ins[1].reshape(1,size//2)})
