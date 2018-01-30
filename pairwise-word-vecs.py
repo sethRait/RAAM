@@ -1,5 +1,4 @@
-# Encodes and decodes pairs of word vectors as well as pairs of encoded pairs of word vectors.
-
+# Recursiely encodes and decodes pairs of word vectors
 from __future__ import division
 import tensorflow as tf
 import numpy as np
@@ -9,13 +8,13 @@ import re
 import math
 
 def main():
-	word_vector_size = 8
+	word_vector_size = 300
 	padding = word_vector_size // 2
 	input_size = 2 * (word_vector_size + padding)
-	learning_rate = 0.00002
+	learning_rate = 0.00001
 
 	print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
-	print("Learning rate: %d", learning_rate)
+	print("Learning rate: %d" % learning_rate)
 
 	vectors = "data/test_vectors.vec" # File of word vectors
 	corpus = "data/austen.txt"
@@ -34,8 +33,21 @@ def main():
 	tf.global_variables_initializer().run()
 
 	sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
+	training_data = length_order(sentence_dict.values())
+	train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size)
 
-	train(sess, train_step, sentence_dict.values(), center, output_layer, loss, input1, input2, input_size)
+# Order the training data by sentence length to allow for parallel data training
+def length_order(data):
+	outs = []
+	data.sort(key=lambda x: x.shape[0], reverse=True) # sort the list by length of sublists, longest is first
+	last_len = 0
+	for arr in data:
+		if arr.shape[0] == last_len:
+			outs[len(outs) - 1].append([arr])
+		else:
+			last_len = arr.size[0]
+			outs.append([arr])
+	return outs
 
 def generate_layers(inputs, input_size):
 	encoded = make_fc(inputs, input_size, "encoder", 1)
@@ -90,16 +102,17 @@ def parse_word_vecs(vectors, vec_size, pad):
 			vec = np.fromstring(parsed[1], dtype = float, count = vec_size, sep = " ")
 			dictionary[parsed[0]] = np.pad(vec, (0, pad), 'constant') # right pad the vector with 0
 			i += 1
-			if i % 10000 == 0: # Only use the first 10,000 words
+			if i % 100000 == 0: # Only use the first 100,000 words
 				break
 	return dictionary
 
 # Parses the file containing the training and testing sentences
 def parse_sentences(corpus):
+	sentences = []
 	print("Parsing input sentences")
 	with open(corpus) as fp:
 		nltk.data.load('tokenizers/punkt/english.pickle')
-		sentences = nltk.sent_tokenize(fp.read().decode('utf-8'))
+		sentences += nltk.sent_tokenize(fp.read().decode('utf-8'))
 	return sentences
 
 
