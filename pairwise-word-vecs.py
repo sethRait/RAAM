@@ -8,7 +8,7 @@ import re
 import math
 
 def main():
-	word_vector_size = 300
+	word_vector_size = 8 
 	padding = word_vector_size // 2
 	input_size = 2 * (word_vector_size + padding)
 	learning_rate = 0.00001
@@ -34,7 +34,14 @@ def main():
 
 	sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
 	training_data = length_order(sentence_dict.values())
+	do_thing(training_data)
+	quit()
 	train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size)
+
+# For testing only
+def do_thing(data):
+	for dat in data:
+		print(len(dat))
 
 # Order the training data by sentence length to allow for parallel data training
 def length_order(data):
@@ -45,7 +52,7 @@ def length_order(data):
 		if arr.shape[0] == last_len:
 			outs[len(outs) - 1].append([arr])
 		else:
-			last_len = arr.size[0]
+			last_len = arr.shape[0]
 			outs.append([arr])
 	return outs
 
@@ -102,7 +109,7 @@ def parse_word_vecs(vectors, vec_size, pad):
 			vec = np.fromstring(parsed[1], dtype = float, count = vec_size, sep = " ")
 			dictionary[parsed[0]] = np.pad(vec, (0, pad), 'constant') # right pad the vector with 0
 			i += 1
-			if i % 100000 == 0: # Only use the first 100,000 words
+			if i % 10000 == 0: # Only use the first 100,000 words
 				break
 	return dictionary
 
@@ -119,6 +126,15 @@ def parse_sentences(corpus):
 def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
 	print("Training on %d sentences per epoch" % len(data))
 	for i in range(250):
+		j = 0
+		for group in data:
+			if j > 50:
+				quit()
+			group = np.array(group)
+			print("len = " + str(group.shape[0]))
+			print(group[0:len(group//2)])
+			j += 1
+		quit()	
 		for sentence in data:
 			train_loss = 0.0
 			while len(sentence) != 1:
@@ -129,6 +145,9 @@ def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
 
 def train_inner(sess, optimizer, encode, decode, ins, loss, input1, input2, size):
 	outs = []
+	print(ins[0])
+	print(type(ins[0]))
+	print(ins[0].shape)
 	while ins.shape[0] > 0:
 		if ins.shape[0] >= 2:
 			_, train_loss, encoded, _ = sess.run([optimizer, loss, encode, decode],
