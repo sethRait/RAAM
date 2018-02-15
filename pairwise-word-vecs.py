@@ -33,7 +33,7 @@ def main():
 
     sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
     training_data = length_order(sentence_dict.values())
-    #do_thing(training_data) # for testing
+    do_thing(training_data) # for testing
     train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size)
 
 # For testing only
@@ -41,24 +41,23 @@ def do_thing(data):
     print("Number of groups: %d" % len(data))
     for dat in data:
         print("\nlen " + str(len(dat[0])))
+        print("\nShape " + str(dat.shape))
         print(dat)
         print("\n")
     quit()
 
 # Order the training data by sentence length to allow for parallel data training
 def length_order(data):
-    print(len(data))
     outs = []
     data.sort(key=lambda x: x.shape[0], reverse=True) # sort the list by length of sublists, longest is first
     last_len = data[0].shape[0]
-    outs.append([data[0]])
+    outs.append(data[0])
     for arr in data:
         if arr.shape[0] == last_len:
-            outs[len(outs) - 1].append([arr])
+            outs[len(outs) - 1] = np.asarray([outs[len(outs) - 1], arr]) 
         else:
-            outs[len(outs) - 1] = np.asarray(outs[len(outs) - 1])
             last_len = arr.shape[0]
-            outs.append([arr])
+            outs.append(arr)
     return outs
 
 def generate_layers(inputs, input_size):
@@ -130,12 +129,9 @@ def parse_sentences(corpus):
 def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
     print("Training on %d sentences per epoch" % len(data))
     for i in range(100):
-        for group in data:
-            group = np.array(group)
-            print(group)
-
         for sentence in data:
-            train_loss = 0.0
+            print(sentence.shape)
+            quit()
             while len(sentence) != 1:
                 train_loss, sentence = train_inner(sess, optimizer, encode, decode, sentence, loss, input1, input2, size)
         if i % 3 == 0:
@@ -147,8 +143,8 @@ def train_inner(sess, optimizer, encode, decode, ins, loss, input1, input2, size
     while ins.shape[0] > 0:
         if ins.shape[0] >= 2:
             _, train_loss, encoded, _ = sess.run([optimizer, loss, encode, decode],
-                                                                              feed_dict={input1:ins[0].reshape(1,size//2),
-                                                                                                     input2:ins[1].reshape(1,size//2)})
+                                                 feed_dict={input1:ins[0].reshape(1,size//2),
+                                                            input2:ins[1].reshape(1,size//2)})
             ins = ins[2:] # pop the top two
             outs.append(encoded)
         else: # If there's only one item left, add it to the output to use next round
