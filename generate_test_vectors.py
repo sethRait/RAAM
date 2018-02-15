@@ -12,11 +12,11 @@ import re
 def main():
     vector_size = 8
     dictionary = get_vocab_dict(vector_size)
-    write_out(dictionary)
+    print_out(dictionary)
 
 def get_vocab_dict(size):
     dictionary = {}
-    with open('austen.txt') as fp:
+    with open('data/test_sentences.txt') as fp:
         nltk.data.load('tokenizers/punkt/english.pickle')
         sentences = nltk.sent_tokenize(fp.read().decode('utf-8'))
     for sentence in sentences:
