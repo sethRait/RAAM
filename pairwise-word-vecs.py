@@ -33,7 +33,7 @@ def main():
 
     sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
     training_data = length_order(sentence_dict.values())
-    do_thing(training_data) # for testing
+    #do_thing(training_data) # for testing
     train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size)
 
 # For testing only
@@ -130,28 +130,32 @@ def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
     print("Training on %d sentences per epoch" % len(data))
     for i in range(100):
         for sentence in data:
-            print(sentence.shape)
-            quit()
+            if sentence.ndim == 2:
+                sentence = np.reshape(sentence, (1, sentence.shape[0], sentence.shape[1]))
             while len(sentence) != 1:
                 train_loss, sentence = train_inner(sess, optimizer, encode, decode, sentence, loss, input1, input2, size)
         if i % 3 == 0:
             print("Epoch: " + str(i))
             print("Loss: " + str(train_loss))
 
+# input/output shape : (<number of sentences>, <length of sentences>, <words>)
 def train_inner(sess, optimizer, encode, decode, ins, loss, input1, input2, size):
+    print("\nIN: " + str(ins.shape))
     outs = []
-    while ins.shape[0] > 0:
-        if ins.shape[0] >= 2:
+    while ins.shape[1] > 0:
+        if ins.shape[1] >= 2: # if there is more than one vector left
             _, train_loss, encoded, _ = sess.run([optimizer, loss, encode, decode],
-                                                 feed_dict={input1:ins[0].reshape(1,size//2),
-                                                            input2:ins[1].reshape(1,size//2)})
-            ins = ins[2:] # pop the top two
+                    feed_dict={input1:ins[:,0,:], input2:ins[:,1,:]})
+            ins = ins[:,2:,:] # pop the top two
+            #outs = np.asarray([outs, encoded])
             outs.append(encoded)
         else: # If there's only one item left, add it to the output to use next round
-            outs.append((ins[0]).reshape(1, size//2))
+            #outs.append((ins[0]).reshape(1, size//2))
+            outs = np.asarray([outs, ins[:,0,:]])
             break
     outs = np.array(outs)
-    outs = outs.reshape(outs.shape[0], size//2)
+    print("OUT: " + str(outs.shape))
+    #outs = outs.reshape(outs.shape[0], size//2)
     return train_loss, outs
 
 # Testing loop
