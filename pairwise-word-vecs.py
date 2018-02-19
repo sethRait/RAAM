@@ -129,33 +129,30 @@ def parse_sentences(corpus):
 def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
     print("Training on %d sentences per epoch" % len(data))
     for i in range(100):
-        for sentence in data:
-            if sentence.ndim == 2:
-                sentence = np.reshape(sentence, (1, sentence.shape[0], sentence.shape[1]))
-            while len(sentence) != 1:
-                train_loss, sentence = train_inner(sess, optimizer, encode, decode, sentence, loss, input1, input2, size)
+        for group in data: # A group is a collection of sentences of the same length
+            if group.ndim == 2: # if there is only one sentene in the group
+                group = np.reshape(group, (1, group.shape[0], group.shape[1]))
+            while group.shape[1] != 1: # stop when the sentences have been encoded to 1 vector
+                train_loss, group = train_inner(sess, optimizer, encode, decode, group, loss, input1, input2, size)
         if i % 3 == 0:
             print("Epoch: " + str(i))
             print("Loss: " + str(train_loss))
 
 # input/output shape : (<number of sentences>, <length of sentences>, <words>)
 def train_inner(sess, optimizer, encode, decode, ins, loss, input1, input2, size):
-    print("\nIN: " + str(ins.shape))
-    outs = []
-    while ins.shape[1] > 0:
+#    import pdb;pdb.set_trace()
+    outs = np.empty((0, size//2), dtype=float)
+    while ins.shape[1] > 0: # unconsumed word-vectors
         if ins.shape[1] >= 2: # if there is more than one vector left
             _, train_loss, encoded, _ = sess.run([optimizer, loss, encode, decode],
                     feed_dict={input1:ins[:,0,:], input2:ins[:,1,:]})
             ins = ins[:,2:,:] # pop the top two
-            #outs = np.asarray([outs, encoded])
-            outs.append(encoded)
+            outs = np.concatenate((outs, encoded))
         else: # If there's only one item left, add it to the output to use next round
-            #outs.append((ins[0]).reshape(1, size//2))
-            outs = np.asarray([outs, ins[:,0,:]])
+            outs = np.concatenate((outs, ins[:,0,:]))
             break
-    outs = np.array(outs)
-    print("OUT: " + str(outs.shape))
-    #outs = outs.reshape(outs.shape[0], size//2)
+    if outs.ndim == 2:
+        outs = np.reshape(outs, (1, outs.shape[0], outs.shape[1]))
     return train_loss, outs
 
 # Testing loop
