@@ -8,7 +8,7 @@ import re
 import math
 
 def main():
-    word_vector_size = 8
+    word_vector_size = 300
     padding = word_vector_size // 2
     input_size = 2 * (word_vector_size + padding)
     learning_rate = 0.00001
@@ -16,8 +16,8 @@ def main():
     print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
     print("Learning rate: %f" % learning_rate)
 
-    vectors = "data/test_vectors.vec" # File of word vectors
-    corpus = "data/test_sentences.txt"
+    vectors = "data/wiki-news-300d-1M.vec" # File of word vectors
+    corpus = "data/austen.txt"
 
     input1 = tf.placeholder(tf.float32, [None, input_size/2], name="first_half") # first word
     input2 = tf.placeholder(tf.float32, [None, input_size/2], name="second_half") # second word
@@ -33,18 +33,7 @@ def main():
 
     sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
     training_data = length_order(sentence_dict.values())
-    #do_thing(training_data) # for testing
     train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size)
-
-# For testing only
-def do_thing(data):
-    print("Number of groups: %d" % len(data))
-    for dat in data:
-        print("\nlen " + str(len(dat[0])))
-        print("\nShape " + str(dat.shape))
-        print(dat)
-        print("\n")
-    quit()
 
 # Order the training data by sentence length to allow for parallel data training
 def length_order(data):
@@ -54,7 +43,11 @@ def length_order(data):
     outs.append(data[0])
     for arr in data:
         if arr.shape[0] == last_len:
-            outs[len(outs) - 1] = np.asarray([outs[len(outs) - 1], arr]) 
+            if arr.ndim == 2 and outs[len(outs) - 1].ndim == 3:
+                outs[len(outs) - 1] = np.concatenate((outs[len(outs) - 1],
+                    arr.reshape(1, arr.shape[0], arr.shape[1])))
+            else:
+                outs[len(outs) - 1] = np.asarray([outs[len(outs) - 1], arr])
         else:
             last_len = arr.shape[0]
             outs.append(arr)
@@ -127,20 +120,19 @@ def parse_sentences(corpus):
 
 
 def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
-    print("Training on %d sentences per epoch" % len(data))
+    print("Training on %d groups per epoch" % len(data))
     for i in range(100):
         for group in data: # A group is a collection of sentences of the same length
             if group.ndim == 2: # if there is only one sentene in the group
                 group = np.reshape(group, (1, group.shape[0], group.shape[1]))
             while group.shape[1] != 1: # stop when the sentences have been encoded to 1 vector
                 train_loss, group = train_inner(sess, optimizer, encode, decode, group, loss, input1, input2, size)
-        if i % 3 == 0:
+        if i % 2 == 0:
             print("Epoch: " + str(i))
             print("Loss: " + str(train_loss))
 
 # input/output shape : (<number of sentences>, <length of sentences>, <words>)
 def train_inner(sess, optimizer, encode, decode, ins, loss, input1, input2, size):
-#    import pdb;pdb.set_trace()
     outs = np.empty((0, size//2), dtype=float)
     while ins.shape[1] > 0: # unconsumed word-vectors
         if ins.shape[1] >= 2: # if there is more than one vector left
