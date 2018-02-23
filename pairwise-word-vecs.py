@@ -11,7 +11,7 @@ def main():
     word_vector_size = 300
     padding = word_vector_size // 2
     input_size = 2 * (word_vector_size + padding)
-    learning_rate = 0.00001
+    learning_rate = 0.000001
 
     print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
     print("Learning rate: %f" % learning_rate)
@@ -54,13 +54,15 @@ def length_order(data):
     return outs
 
 def generate_layers(inputs, input_size):
-    encoded = make_fc(inputs, input_size, "encoder", 1)
-    encodedr = make_fc(encoded, input_size, "encoderr", 2)
-    encoded2 = make_fc(encodedr, 3*input_size//4, "second_encoder", 2)
-    center = make_fc(encoded2, input_size/2, "center", 2)
-    decoded = make_fc(center, 3*input_size//2, "decoder", 2)
-    decoded2 = make_fc(decoded, input_size, "second_decoder", 2)
-    decoded2r = make_fc(decoded2, input_size, "second_decoderr", 1)
+    encoded = make_fc(inputs, input_size, "encoder", 3)
+    encodedr = make_fc(encoded, input_size, "encoderr", 3)
+    encoded2 = make_fc(encodedr, 3*input_size//4, "second_encoder", 3)
+    encoded3 = make_fc(encoded2, 3*input_size//4, "third_encoder", 3)
+    center = make_fc(encoded3, input_size/2, "center", 3)
+    decoded1 = make_fc(center, 3*input_size//2, "decoder1", 3)
+    decoded = make_fc(decoded1, 3*input_size//2, "decoder", 3)
+    decoded2 = make_fc(decoded, input_size, "second_decoder", 3)
+    decoded2r = make_fc(decoded2, input_size, "second_decoderr", 3)
     return center, decoded2r
 
 def make_fc(input_tensor, output_size, name, mode):
@@ -69,8 +71,10 @@ def make_fc(input_tensor, output_size, name, mode):
     b = tf.Variable(tf.zeros([output_size]))
     if mode == 1: # sigmoid
         x = tf.nn.sigmoid(tf.matmul(input_tensor, W) + b)
-    else: # relu
+    if mode == 2: # relu
         x = tf.nn.relu(tf.matmul(input_tensor, W) + b)
+    if mode == 3: # tanh
+        x = tf.nn.tanh(tf.matmul(input_tensor, W) + b)
     return x
 
 # Returns a dictionary of sentances and a list of their vector representation
@@ -123,6 +127,7 @@ def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
     print("Training on %d groups per epoch" % len(data))
     for i in range(100):
         for group in data: # A group is a collection of sentences of the same length
+            np.random.shuffle(group)
             if group.ndim == 2: # if there is only one sentene in the group
                 group = np.reshape(group, (1, group.shape[0], group.shape[1]))
             while group.shape[1] != 1: # stop when the sentences have been encoded to 1 vector
