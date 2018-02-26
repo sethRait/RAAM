@@ -11,7 +11,8 @@ def main():
     word_vector_size = 300
     padding = word_vector_size // 2
     input_size = 2 * (word_vector_size + padding)
-    learning_rate = 0.000001
+    learning_rate = 0.00005
+    num_epochs = 150
 
     print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
     print("Learning rate: %f" % learning_rate)
@@ -32,8 +33,11 @@ def main():
     tf.global_variables_initializer().run()
 
     sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
-    training_data = length_order(sentence_dict.values())
-    train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size)
+    cut = (4 * len(sentence_dict.values())) // 5
+    training_data = sentence_dict.values()[0:cut]
+    testing_data = sentence_dict.values()[cut:]
+    training_data = length_order(training_data)
+    train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size, num_epochs)
 
 # Order the training data by sentence length to allow for parallel data training
 def length_order(data):
@@ -123,16 +127,17 @@ def parse_sentences(corpus):
     return sentences
 
 
-def train(sess, optimizer, data, encode, decode, loss, input1, input2, size):
+def train(sess, optimizer, data, encode, decode, loss, input1, input2, size, num_epochs):
     print("Training on %d groups per epoch" % len(data))
-    for i in range(100):
+    print("Training for %d epochs" % num_epochs)
+    for i in range(num_epochs):
         for group in data: # A group is a collection of sentences of the same length
             np.random.shuffle(group)
             if group.ndim == 2: # if there is only one sentene in the group
                 group = np.reshape(group, (1, group.shape[0], group.shape[1]))
             while group.shape[1] != 1: # stop when the sentences have been encoded to 1 vector
                 train_loss, group = train_inner(sess, optimizer, encode, decode, group, loss, input1, input2, size)
-        if i % 2 == 0:
+        if i % 5 == 0:
             print("Epoch: " + str(i))
             print("Loss: " + str(train_loss))
 
