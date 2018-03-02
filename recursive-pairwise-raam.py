@@ -11,7 +11,7 @@ def main():
     word_vector_size = 300
     padding = word_vector_size // 2
     input_size = 2 * (word_vector_size + padding)
-    learning_rate = 0.00005
+    learning_rate = 0.00001
     num_epochs = 150
 
     print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
