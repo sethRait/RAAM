@@ -24,13 +24,46 @@ def main():
     input2 = tf.placeholder(tf.float32, [None, input_size/2], name="second_half") # second word
     inputs = tf.concat([input1, input2], 1, name="full_input")
 
-    # layers
-    center, output_layer = generate_layers(inputs, input_size)
+    original_sentence = tf.placeholder(tf.float32, [None, 450])
+    # ingest
+    depth_ingest = int(math.log(len(sentence),2))
+    for i in range(depth_ingest):
+        R_array = []
+        if len(sentence) == 1:
+            break
+        for j in range(sentence, len(sentence)-1, 2):
+            _, R = generate_layer(sentence[j:j+2]) # tf.concat the words, don't pass in the array
+            R_array.append(R)
+        sentence = R_array
 
-    loss = tf.losses.mean_squared_error(labels=inputs, predictions=output_layer)
+    # digest
+    for i in range(depth_ingest):
+        R_array = []
+        # for j in range(2 ** len(sentence)):
+        for j in range(len(sentence)):
+            _, R = generate_layers(sentence[j])
+            R_array.extend([R[:EMB], R[EMB:]])
+        sentence = R_array
+    
+    # len(R_array) == len(original_sentenc)
+    loss = tf.losses.mean_squared_error(labels=original_sentence, predictions=sentence)
+
+
+    
+    # center, output_layer = generate_layers(inputs, input_size)
+    # 
+
+    # loss = tf.losses.mean_squared_error(labels=inputs, predictions=output_layer)
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
     sess = tf.InteractiveSession()
     tf.global_variables_initializer().run()
+    writer = tf.summary.FileWriter("/tmp/seth", sess.graph)
+    # import sys
+    # sys.exit(1)
+
+    # sentence = [10, 450]
+    
+    sess.run(
 
     sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
     cut = (4 * len(sentence_dict.values())) // 5
@@ -58,27 +91,31 @@ def length_order(data):
     return outs
 
 def generate_layers(inputs, input_size):
-    encoded = make_fc(inputs, input_size, "encoder", 3)
-    encodedr = make_fc(encoded, input_size, "encoderr", 3)
-    encoded2 = make_fc(encodedr, 3*input_size//4, "second_encoder", 3)
-    encoded3 = make_fc(encoded2, 3*input_size//4, "third_encoder", 3)
-    center = make_fc(encoded3, input_size/2, "center", 3)
-    decoded1 = make_fc(center, 3*input_size//2, "decoder1", 3)
-    decoded = make_fc(decoded1, 3*input_size//2, "decoder", 3)
-    decoded2 = make_fc(decoded, input_size, "second_decoder", 3)
-    decoded2r = make_fc(decoded2, input_size, "second_decoderr", 3)
+    with tf.name_scope('encoder') as scope:
+        encoded = make_fc(inputs, input_size, "encoder", 3)
+        encodedr = make_fc(encoded, input_size, "encoderr", 3)
+        encoded2 = make_fc(encodedr, 3*input_size//4, "second_encoder", 3)
+        encoded3 = make_fc(encoded2, 3*input_size//4, "third_encoder", 3)
+    with tf.name_scope('center') as scope:
+        center = make_fc(encoded3, input_size/2, "center", 3)
+    with tf.name_scope('decoder') as scope:
+        decoded1 = make_fc(center, 3*input_size//2, "decoder1", 3)
+        decoded = make_fc(decoded1, 3*input_size//2, "decoder", 3)
+        decoded2 = make_fc(decoded, input_size, "second_decoder", 3)
+        decoded2r = make_fc(decoded2, input_size, "second_decoderr", 3)
     return center, decoded2r
 
 def make_fc(input_tensor, output_size, name, mode):
-    W = tf.get_variable(name + "weights",[input_tensor.get_shape().as_list()[1],output_size],tf.float32,
-                                                          tf.random_normal_initializer(stddev=0.1))
-    b = tf.Variable(tf.zeros([output_size]))
-    if mode == 1: # sigmoid
-        x = tf.nn.sigmoid(tf.matmul(input_tensor, W) + b)
-    if mode == 2: # relu
-        x = tf.nn.relu(tf.matmul(input_tensor, W) + b)
-    if mode == 3: # tanh
-        x = tf.nn.tanh(tf.matmul(input_tensor, W) + b)
+    with tf.name_scope('FC') as scope:
+        W = tf.get_variable(name + "weights",[input_tensor.get_shape().as_list()[1],output_size],tf.float32,
+                                                              tf.random_normal_initializer(stddev=0.1))
+        b = tf.Variable(tf.zeros([output_size]))
+        if mode == 1: # sigmoid
+            x = tf.nn.sigmoid(tf.matmul(input_tensor, W) + b)
+        if mode == 2: # relu
+            x = tf.nn.relu(tf.matmul(input_tensor, W) + b)
+        if mode == 3: # tanh
+            x = tf.nn.tanh(tf.matmul(input_tensor, W) + b)
     return x
 
 # Returns a dictionary of sentances and a list of their vector representation
@@ -180,3 +217,5 @@ def test(sess, epochs, data, decode, loss, input1, input2):
 
 if __name__ == "__main__":
     main()
+
+
