@@ -11,7 +11,7 @@ def main():
     word_vector_size = 8
     padding = word_vector_size // 2
     input_size = 2 * (word_vector_size + padding)
-    learning_rate = 0.00001
+    learning_rate = 0.0001
     num_epochs = 150
 
     print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
@@ -20,52 +20,37 @@ def main():
     vectors = "data/test_vectos.vec" # File of word vectors
     corpus = "data/test_sentences.txt"
 
-    input1 = tf.placeholder(tf.float32, [None, input_size/2], name="first_half") # first word
-    input2 = tf.placeholder(tf.float32, [None, input_size/2], name="second_half") # second word
-    inputs = tf.concat([input1, input2], 1, name="full_input")
-
     original_sentence = tf.placeholder(tf.float32, [None, word_vector_size + padding])
 
     # ingest
-    depth_ingest = int(math.log(len(sentence),2))
+    depth_ingest = int(math.log(tf.size(original_sentence),2))
     for i in range(depth_ingest):
         R_array = []
         if len(original_sentence) == 1:
             break
         for j in range(original_sentence, len(original_sentence)-1, 2):
-			#_, R = generate_layer(sentence[j:j+2]) # tf.concat the words, don't pass in the array
-			_, R = generate_layer(tf.concat([original_sentence[j], original_sentence[j+1]], 1) 
-            R_array.append(R)
+			_, R = generate_layer(tf.concat([original_sentence[j], original_sentence[j+1]], 1))
+			R_array.append(R)
         sentence = R_array
 
     # digest
     for i in range(depth_ingest):
         R_array = []
-        # for j in range(2 ** len(sentence)):
         for j in range(len(sentence)):
             _, R = generate_layers(sentence[j])
-            R_array.extend([R[:EMB], R[EMB:]])
+            R_array.extend([R[:input_size//2], R[input_size//2:]])
         sentence = R_array
     
-    # len(R_array) == len(original_sentenc)
     loss = tf.losses.mean_squared_error(labels=original_sentence, predictions=sentence)
 
-
     
-    # center, output_layer = generate_layers(inputs, input_size)
-    # 
-
     # loss = tf.losses.mean_squared_error(labels=inputs, predictions=output_layer)
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
     sess = tf.InteractiveSession()
     tf.global_variables_initializer().run()
     writer = tf.summary.FileWriter("/tmp/seth", sess.graph)
-    # import sys
-    # sys.exit(1)
-
-    # sentence = [10, 450]
-    
-    sess.run(
+    import sys
+    sys.exit(1)
 
     sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
     cut = (4 * len(sentence_dict.values())) // 5
