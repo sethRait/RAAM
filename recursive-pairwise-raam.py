@@ -8,7 +8,7 @@ import re
 import math
 
 def main():
-    word_vector_size = 300
+    word_vector_size = 8
     padding = word_vector_size // 2
     input_size = 2 * (word_vector_size + padding)
     learning_rate = 0.00001
@@ -17,22 +17,24 @@ def main():
     print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
     print("Learning rate: %f" % learning_rate)
 
-    vectors = "data/wiki-news-300d-1M.vec" # File of word vectors
-    corpus = "data/austen.txt"
+    vectors = "data/test_vectos.vec" # File of word vectors
+    corpus = "data/test_sentences.txt"
 
     input1 = tf.placeholder(tf.float32, [None, input_size/2], name="first_half") # first word
     input2 = tf.placeholder(tf.float32, [None, input_size/2], name="second_half") # second word
     inputs = tf.concat([input1, input2], 1, name="full_input")
 
-    original_sentence = tf.placeholder(tf.float32, [None, 450])
+    original_sentence = tf.placeholder(tf.float32, [None, word_vector_size + padding])
+
     # ingest
     depth_ingest = int(math.log(len(sentence),2))
     for i in range(depth_ingest):
         R_array = []
-        if len(sentence) == 1:
+        if len(original_sentence) == 1:
             break
-        for j in range(sentence, len(sentence)-1, 2):
-            _, R = generate_layer(sentence[j:j+2]) # tf.concat the words, don't pass in the array
+        for j in range(original_sentence, len(original_sentence)-1, 2):
+			#_, R = generate_layer(sentence[j:j+2]) # tf.concat the words, don't pass in the array
+			_, R = generate_layer(tf.concat([original_sentence[j], original_sentence[j+1]], 1) 
             R_array.append(R)
         sentence = R_array
 
@@ -93,17 +95,13 @@ def length_order(data):
 def generate_layers(inputs, input_size):
     with tf.name_scope('encoder') as scope:
         encoded = make_fc(inputs, input_size, "encoder", 3)
-        encodedr = make_fc(encoded, input_size, "encoderr", 3)
-        encoded2 = make_fc(encodedr, 3*input_size//4, "second_encoder", 3)
-        encoded3 = make_fc(encoded2, 3*input_size//4, "third_encoder", 3)
+        encoded2 = make_fc(encoded, 3*input_size//4, "second_encoder", 3)
     with tf.name_scope('center') as scope:
-        center = make_fc(encoded3, input_size/2, "center", 3)
+        center = make_fc(encoded2, input_size/2, "center", 3)
     with tf.name_scope('decoder') as scope:
-        decoded1 = make_fc(center, 3*input_size//2, "decoder1", 3)
-        decoded = make_fc(decoded1, 3*input_size//2, "decoder", 3)
+        decoded = make_fc(center, 3*input_size//2, "decoder1", 3)
         decoded2 = make_fc(decoded, input_size, "second_decoder", 3)
-        decoded2r = make_fc(decoded2, input_size, "second_decoderr", 3)
-    return center, decoded2r
+    return center, decoded2
 
 def make_fc(input_tensor, output_size, name, mode):
     with tf.name_scope('FC') as scope:
