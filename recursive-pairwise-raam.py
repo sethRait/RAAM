@@ -23,13 +23,13 @@ def main():
     original_sentence = tf.placeholder(tf.float32, [None, word_vector_size + padding])
 
     # ingest
-    depth_ingest = int(math.log(tf.size(original_sentence),2))
+    depth_ingest = int(math.log(original_sentence.get_shape()[1].value, 2))
     for i in range(depth_ingest):
         R_array = []
-        if len(original_sentence) == 1:
+        if original_sentence.get_shape()[1] == 1:
             break
-        for j in range(original_sentence, len(original_sentence)-1, 2):
-			_, R = generate_layer(tf.concat([original_sentence[j], original_sentence[j+1]], 1))
+        for j in range(0, original_sentence.get_shape()[1]-1, 2):
+			_, R = generate_layers(tf.concat([original_sentence[j], original_sentence[j+1]], 1))
 			R_array.append(R)
         sentence = R_array
 
