@@ -29,7 +29,7 @@ def main():
         if original_sentence.get_shape()[1] == 1:
             break
         for j in range(0, original_sentence.get_shape()[1]-1, 2):
-			_, R = generate_layers(tf.concat([original_sentence[j], original_sentence[j+1]], 1))
+			_, R = generate_layers(tf.concat([original_sentence[j], original_sentence[j+1]], 0))
 			R_array.append(R)
         sentence = R_array
 
@@ -77,20 +77,21 @@ def length_order(data):
             outs.append(arr)
     return outs
 
-def generate_layers(inputs, input_size):
-    with tf.name_scope('encoder') as scope:
-        encoded = make_fc(inputs, input_size, "encoder", 3)
-        encoded2 = make_fc(encoded, 3*input_size//4, "second_encoder", 3)
-    with tf.name_scope('center') as scope:
-        center = make_fc(encoded2, input_size/2, "center", 3)
-    with tf.name_scope('decoder') as scope:
-        decoded = make_fc(center, 3*input_size//2, "decoder1", 3)
-        decoded2 = make_fc(decoded, input_size, "second_decoder", 3)
-    return center, decoded2
+def generate_layers(inputs):
+	size = inputs.shape[0].value
+	with tf.name_scope('encoder') as scope:
+		encoded = make_fc(inputs, size, "encoder", 3)
+		encoded2 = make_fc(encoded, 3*size//4, "second_encoder", 3)
+	with tf.name_scope('center') as scope:
+		center = make_fc(encoded2, size/2, "center", 3)
+	with tf.name_scope('decoder') as scope:
+		decoded = make_fc(center, 3*size//2, "decoder1", 3)
+		decoded2 = make_fc(decoded, size, "second_decoder", 3)
+	return center, decoded2
 
 def make_fc(input_tensor, output_size, name, mode):
     with tf.name_scope('FC') as scope:
-        W = tf.get_variable(name + "weights",[input_tensor.get_shape().as_list()[1],output_size],tf.float32,
+        W = tf.get_variable(name + "weights",[input_tensor.get_shape().as_list()[0],output_size],tf.float32,
                                                               tf.random_normal_initializer(stddev=0.1))
         b = tf.Variable(tf.zeros([output_size]))
         if mode == 1: # sigmoid
