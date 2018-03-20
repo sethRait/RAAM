@@ -33,7 +33,7 @@ def main():
 			R_array.append(R)
         sentence = R_array
 
-    # digest
+    # egest
 	for i in range(depth_ingest):
 	    R_array = []
 	    for j in range(len(sentence)):
@@ -57,7 +57,7 @@ def main():
 	training_data = sentence_dict.values()[0:cut]
 	testing_data = sentence_dict.values()[cut:]
 	quit()
-    train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size, num_epochs)
+    train(sess, train_step, training_data, loss, input_size, num_epochs)
 
 
 def build_encoder(inputs):
@@ -133,7 +133,7 @@ def parse_sentences(corpus):
     return sentences
 
 
-def train(sess, optimizer, data, encode, decode, loss, input1, input2, size, num_epochs):
+def train(sess, optimizer, data, loss, size, num_epochs):
     print("Training on %d groups per epoch" % len(data))
     print("Training for %d epochs" % num_epochs)
     for i in range(num_epochs):
@@ -141,8 +141,6 @@ def train(sess, optimizer, data, encode, decode, loss, input1, input2, size, num
             np.random.shuffle(group)
             if group.ndim == 2: # if there is only one sentene in the group
                 group = np.reshape(group, (1, group.shape[0], group.shape[1]))
-            while group.shape[1] != 1: # stop when the sentences have been encoded to 1 vector
-                train_loss, group = train_inner(sess, optimizer, encode, decode, group, loss, input1, input2, size)
         if i % 5 == 0:
             print("Epoch: " + str(i))
             print("Loss: " + str(train_loss))
