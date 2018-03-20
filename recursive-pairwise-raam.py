@@ -102,14 +102,14 @@ def build_decoder(inputs):
 #	return center, decoded2
 
 def make_fc(input_tensor, output_size, name):
-	input_size = input_tensor.get_shape().as_list[1]
-    with tf.name_scope('FC') as scope:
+	input_size = input_tensor.get_shape().as_list()[1]
+	with tf.name_scope('FC') as scope:
 		with tf.variable_scope('FC', reuse=tf.AUTO_REUSE):
 			W = tf.get_variable(name + "weights",[input_size, output_size],tf.float32,
                                 tf.random_normal_initializer(stddev=0.1))
-        	b = tf.Variable(tf.zeros([output_size]))
+			b = tf.Variable(tf.zeros([output_size]))
 			x = tf.nn.tanh(tf.matmul(input_tensor, W) + b)
-    return x
+	return x
 
 # Returns a dictionary of sentances and a list of their vector representation
 def generate_samples(vectors, corpus, vec_size, pad):
