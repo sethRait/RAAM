@@ -17,7 +17,7 @@ def main():
     print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
     print("Learning rate: %f" % learning_rate)
 
-    vectors = "data/test_vectos.vec" # File of word vectors
+    vectors = "data/test_vectors.vec" # File of word vectors
     corpus = "data/test_sentences.txt"
 
     original_sentence = tf.placeholder(tf.float32, [None, word_vector_size + padding])
@@ -29,34 +29,38 @@ def main():
         if original_sentence.get_shape()[1] == 1:
             break
         for j in range(0, original_sentence.get_shape()[1]-1, 2):
-			_, R = generate_layers(tf.concat([original_sentence[j], original_sentence[j+1]], 0))
+			R = build_encoder(tf.concat([original_sentence[j], original_sentence[j+1]], 0))
 			R_array.append(R)
         sentence = R_array
 
     # digest
-    for i in range(depth_ingest):
-        R_array = []
-        for j in range(len(sentence)):
-            _, R = generate_layers(sentence[j])
-            R_array.extend([R[:input_size//2], R[input_size//2:]])
-        sentence = R_array
+	for i in range(depth_ingest):
+	    R_array = []
+	    for j in range(len(sentence)):
+			R = build_decoder(sentence[j])
+			R_array.extend([R[:,:input_size//2], R[:,input_size//2:]])
+	    sentence = R_array
     
-    loss = tf.losses.mean_squared_error(labels=original_sentence, predictions=sentence)
+	original_sentence = tf.expand_dims(original_sentence, axis=1)
+	print(original_sentence)
+	loss = tf.losses.mean_squared_error(labels=original_sentence, predictions=sentence)
 
     
     # loss = tf.losses.mean_squared_error(labels=inputs, predictions=output_layer)
-    train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-    sess = tf.InteractiveSession()
-    tf.global_variables_initializer().run()
-    writer = tf.summary.FileWriter("/tmp/seth", sess.graph)
-    import sys
-    sys.exit(1)
+	train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+	sess = tf.InteractiveSession()
+	tf.global_variables_initializer().run()
+	writer = tf.summary.FileWriter("/tmp/seth", sess.graph)
+	#import sys
+	#sys.exit(1)
 
-    sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
-    cut = (4 * len(sentence_dict.values())) // 5
-    training_data = sentence_dict.values()[0:cut]
-    testing_data = sentence_dict.values()[cut:]
-    training_data = length_order(training_data)
+	sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
+	cut = (4 * len(sentence_dict.values())) // 5
+	training_data = sentence_dict.values()[0:cut]
+	testing_data = sentence_dict.values()[cut:]
+	#training_data = length_order(training_data)
+	print(sentence_dict)
+	quit()
     train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size, num_epochs)
 
 # Order the training data by sentence length to allow for parallel data training
@@ -77,29 +81,34 @@ def length_order(data):
             outs.append(arr)
     return outs
 
-def generate_layers(inputs):
+def build_encoder(inputs):
 	size = inputs.shape[0].value
+	inputs = tf.expand_dims(inputs, axis=0)
 	with tf.name_scope('encoder') as scope:
-		encoded = make_fc(inputs, size, "encoder", 3)
-		encoded2 = make_fc(encoded, 3*size//4, "second_encoder", 3)
+		encoded = make_fc(inputs, size, "encoder")
+		encoded2 = make_fc(encoded, 3*size//4, "second_encoder")
 	with tf.name_scope('center') as scope:
-		center = make_fc(encoded2, size/2, "center", 3)
-	with tf.name_scope('decoder') as scope:
-		decoded = make_fc(center, 3*size//2, "decoder1", 3)
-		decoded2 = make_fc(decoded, size, "second_decoder", 3)
-	return center, decoded2
+		center = make_fc(encoded2, size/2, "center")
+	return center
 
-def make_fc(input_tensor, output_size, name, mode):
+def build_decoder(inputs):
+	size = inputs.shape[1].value
+	with tf.name_scope('decoder') as scope:
+		decoded = make_fc(inputs, 3*size//2, "decoder1")
+		decoded2 = make_fc(decoded, 2*size, "second_decoder")
+	return decoded2
+
+#def generate_layers(inputs):
+#	return center, decoded2
+
+def make_fc(input_tensor, output_size, name):
+	input_size = input_tensor.get_shape().as_list[1]
     with tf.name_scope('FC') as scope:
-        W = tf.get_variable(name + "weights",[input_tensor.get_shape().as_list()[0],output_size],tf.float32,
-                                                              tf.random_normal_initializer(stddev=0.1))
-        b = tf.Variable(tf.zeros([output_size]))
-        if mode == 1: # sigmoid
-            x = tf.nn.sigmoid(tf.matmul(input_tensor, W) + b)
-        if mode == 2: # relu
-            x = tf.nn.relu(tf.matmul(input_tensor, W) + b)
-        if mode == 3: # tanh
-            x = tf.nn.tanh(tf.matmul(input_tensor, W) + b)
+		with tf.variable_scope('FC', reuse=tf.AUTO_REUSE):
+			W = tf.get_variable(name + "weights",[input_size, output_size],tf.float32,
+                                tf.random_normal_initializer(stddev=0.1))
+        	b = tf.Variable(tf.zeros([output_size]))
+			x = tf.nn.tanh(tf.matmul(input_tensor, W) + b)
     return x
 
 # Returns a dictionary of sentances and a list of their vector representation
