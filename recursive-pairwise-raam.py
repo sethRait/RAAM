@@ -42,11 +42,9 @@ def main():
 	    sentence = R_array
     
 	original_sentence = tf.expand_dims(original_sentence, axis=1)
-	print(original_sentence)
 	loss = tf.losses.mean_squared_error(labels=original_sentence, predictions=sentence)
 
     
-    # loss = tf.losses.mean_squared_error(labels=inputs, predictions=output_layer)
 	train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 	sess = tf.InteractiveSession()
 	tf.global_variables_initializer().run()
@@ -58,28 +56,9 @@ def main():
 	cut = (4 * len(sentence_dict.values())) // 5
 	training_data = sentence_dict.values()[0:cut]
 	testing_data = sentence_dict.values()[cut:]
-	#training_data = length_order(training_data)
-	print(sentence_dict)
 	quit()
     train(sess, train_step, training_data, center, output_layer, loss, input1, input2, input_size, num_epochs)
 
-# Order the training data by sentence length to allow for parallel data training
-def length_order(data):
-    outs = []
-    data.sort(key=lambda x: x.shape[0], reverse=True) # sort the list by length of sublists, longest is first
-    last_len = data[0].shape[0]
-    outs.append(data[0])
-    for arr in data:
-        if arr.shape[0] == last_len:
-            if arr.ndim == 2 and outs[len(outs) - 1].ndim == 3:
-                outs[len(outs) - 1] = np.concatenate((outs[len(outs) - 1],
-                    arr.reshape(1, arr.shape[0], arr.shape[1])))
-            else:
-                outs[len(outs) - 1] = np.asarray([outs[len(outs) - 1], arr])
-        else:
-            last_len = arr.shape[0]
-            outs.append(arr)
-    return outs
 
 def build_encoder(inputs):
 	size = inputs.shape[0].value
@@ -97,9 +76,6 @@ def build_decoder(inputs):
 		decoded = make_fc(inputs, 3*size//2, "decoder1")
 		decoded2 = make_fc(decoded, 2*size, "second_decoder")
 	return decoded2
-
-#def generate_layers(inputs):
-#	return center, decoded2
 
 def make_fc(input_tensor, output_size, name):
 	input_size = input_tensor.get_shape().as_list()[1]
@@ -170,22 +146,6 @@ def train(sess, optimizer, data, encode, decode, loss, input1, input2, size, num
         if i % 5 == 0:
             print("Epoch: " + str(i))
             print("Loss: " + str(train_loss))
-
-# input/output shape : (<number of sentences>, <length of sentences>, <words>)
-def train_inner(sess, optimizer, encode, decode, ins, loss, input1, input2, size):
-    outs = np.empty((0, size//2), dtype=float)
-    while ins.shape[1] > 0: # unconsumed word-vectors
-        if ins.shape[1] >= 2: # if there is more than one vector left
-            _, train_loss, encoded, _ = sess.run([optimizer, loss, encode, decode],
-                    feed_dict={input1:ins[:,0,:], input2:ins[:,1,:]})
-            ins = ins[:,2:,:] # pop the top two
-            outs = np.concatenate((outs, encoded))
-        else: # If there's only one item left, add it to the output to use next round
-            outs = np.concatenate((outs, ins[:,0,:]))
-            break
-    if outs.ndim == 2:
-        outs = np.reshape(outs, (1, outs.shape[0], outs.shape[1]))
-    return train_loss, outs
 
 # Testing loop
 def test(sess, epochs, data, decode, loss, input1, input2):
