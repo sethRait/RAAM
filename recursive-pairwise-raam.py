@@ -13,6 +13,7 @@ def main():
 	input_size = 2 * (word_vector_size + padding)
 	learning_rate = 0.0001
 	num_epochs = 150
+	sen_len = 30
 
 	print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
 	print("Learning rate: %f" % learning_rate)
@@ -20,51 +21,70 @@ def main():
 	vectors = "data/test_vectors.vec" # File of word vectors
 	corpus = "data/test_sentences.txt"
 
-	original_sentence = tf.placeholder(tf.float32, [None, word_vector_size + padding])
-	ingest = tf.expand_dims(original_sentence, axis=1)
+	original_sentence = tf.placeholder(tf.float32, [None, sen_len, word_vector_size + padding])
+	# ingest = tf.expand_dims(original_sentence, axis=1)
+	ingest = original_sentence
 
 	# ingest
-	depth_ingest = int(math.log(original_sentence.get_shape()[1].value, 2))
-	for i in range(depth_ingest):
-		R_array = []
-		if ingest.get_shape()[2] == 1:
-			break
-		print("shape of ingest is:")
-		print(ingest.get_shape())
-		for j in range(0, original_sentence.get_shape()[1]-1, 2):
-			temp = tf.concat([ingest[j], ingest[j+1]], axis=1)
-			print("shape of temp is:")
-			print(temp.get_shape())
-			R = build_encoder(temp)
-			R_array.append(R)
-		ingest = tf.stack(R_array)
+	depth_ingest = int(math.ceil(math.log(sen_len, 2)))
+	new_sen_len = sen_len
+        with tf.name_scope('encoder'):
+            for i in range(depth_ingest):
+                with tf.name_scope(str(i)):
+                    R_array = []
+                    # DONE
+                    # if ingest.get_shape()[2] == 1:
+                    #         break
+                    print("shape of ingest is:")
+                    print(ingest.get_shape())
+                    
+                    for j in range(0, new_sen_len, 2):
+                        if j == new_sen_len-1:
+                            R_array.append(ingest[:,j])
+                        else:
+                            temp = tf.concat([ingest[:,j], ingest[:,j+1]], axis=1)
+                            print("shape of temp is:")
+                            print(temp.get_shape())
+                            R = build_encoder(temp)
+                            R_array.append(R)
+                    ingest = tf.stack(R_array, axis=1)
+                    new_sen_len //= 2
 
 	# egest
 	egest = ingest
-	for i in range(depth_ingest):
-		R_array = []
-		for j in range(len(egest)):
-			R = build_decoder(egest[j])
-			R_array.extend([R[:,:input_size//2], R[:,input_size//2:]])
-		egest = R_array
-	
-	original_sentence = tf.expand_dims(original_sentence, axis=1)
+        new_sen_len = 1
+        with tf.name_scope('decoder'):
+            for i in range(depth_ingest):
+                with tf.name_scope(str(i)):
+                    R_array = []
+                    for j in range(new_sen_len):
+                        R = build_decoder(egest[:,j])
+                        R_array.extend([R[:,:input_size//2], R[:,input_size//2:]])
+                    # egest = R_array
+                    egest = tf.stack(R_array, axis=1)
+                    new_sen_len *=2
+            egest = egest[:,0:sen_len,:]
+	# original_sentence = tf.expand_dims(original_sentence, axis=1)
 	loss = tf.losses.mean_squared_error(labels=original_sentence, predictions=egest)
 
 	
 	train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 	sess = tf.InteractiveSession()
 	tf.global_variables_initializer().run()
-	writer = tf.summary.FileWriter("/tmp/seth", sess.graph)
-	import sys
-	sys.exit(1)
+	writer = tf.summary.FileWriter("checkpoints/", sess.graph)
+	# import sys
+	# sys.exit(1)
+	print '*'*80
+        for i in tf.trainable_variables():
+            print(i)
+	print '*'*80
 
 	sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
 	cut = (4 * len(sentence_dict.values())) // 5
 	training_data = sentence_dict.values()[0:cut]
 	testing_data = sentence_dict.values()[cut:]
-	quit()
-	train(sess, train_step, training_data, loss, input_size, num_epochs, injest, egest)
+	# quit()
+	train(sess, train_step, training_data, loss, input_size, num_epochs, ingest, egest)
 
 
 #input.get_shape() == (1, vector_size + padding)
@@ -72,10 +92,10 @@ def build_encoder(inputs):
 	size = inputs.shape[1].value
 	#inputs = tf.expand_dims(inputs, axis=0)
 	with tf.name_scope('encoder') as scope:
-		encoded = make_fc(inputs, size, "encoder")
-		encoded2 = make_fc(encoded, 3*size//4, "second_encoder")
+            encoded = make_fc(inputs, size, "E_first")
+            encoded2 = make_fc(encoded, 3*size//4, "E_second")
 	with tf.name_scope('center') as scope:
-		center = make_fc(encoded2, size/2, "center")
+            center = make_fc(encoded2, size/2, "center")
 	print("shape of center is:")
 	print(center.get_shape())
 	return center
@@ -83,18 +103,18 @@ def build_encoder(inputs):
 def build_decoder(inputs):
 	size = inputs.shape[1].value
 	with tf.name_scope('decoder') as scope:
-		decoded = make_fc(inputs, 3*size//2, "decoder1")
-		decoded2 = make_fc(decoded, 2*size, "second_decoder")
+            decoded = make_fc(inputs, 3*size//2, "D_first")
+            decoded2 = make_fc(decoded, 2*size, "D_second")
 	return decoded2
 
 def make_fc(input_tensor, output_size, name):
 	input_size = input_tensor.get_shape().as_list()[1]
-	with tf.name_scope('FC') as scope:
-		with tf.variable_scope('FC', reuse=tf.AUTO_REUSE):
-			W = tf.get_variable(name + "weights",[input_size, output_size],tf.float32,
-								tf.random_normal_initializer(stddev=0.1))
-			b = tf.Variable(tf.zeros([output_size]))
-			x = tf.nn.tanh(tf.matmul(input_tensor, W) + b)
+	# with tf.name_scope('FC') as scope:
+        with tf.variable_scope('FC', reuse=tf.AUTO_REUSE):
+            W = tf.get_variable(name+"weights",[input_size, output_size],tf.float32,
+                                                    tf.random_normal_initializer(stddev=0.1))
+            b = tf.get_variable(name+'bias',[output_size],tf.float32,tf.zeros_initializer())
+            x = tf.nn.tanh(tf.matmul(input_tensor, W) + b)
 	return x
 
 # Returns a dictionary of sentances and a list of their vector representation
@@ -148,7 +168,7 @@ def train(sess, optimizer, data, loss, size, num_epochs, injest, egest):
 	print("Training on %d groups per epoch" % len(data))
 	print("Training for %d epochs" % num_epochs)
 	print("Shape is: ")
-	print(data.shape)
+	# print(data.shape)
 	quit()
 	for i in range(num_epochs):
 		for group in data: # A group is a collection of sentences of the same length
