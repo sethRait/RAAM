@@ -22,7 +22,6 @@ def main():
 	corpus = "data/test_sentences.txt"
 
 	original_sentence = tf.placeholder(tf.float32, [None, sen_len, word_vector_size + padding])
-	# ingest = tf.expand_dims(original_sentence, axis=1)
 	ingest = original_sentence
 
 	# ingest
@@ -32,12 +31,6 @@ def main():
             for i in range(depth_ingest):
                 with tf.name_scope(str(i)):
                     R_array = []
-                    # DONE
-                    # if ingest.get_shape()[2] == 1:
-                    #         break
-                    print("shape of ingest is:")
-                    print(ingest.get_shape())
-                    
                     for j in range(0, new_sen_len, 2):
                         if j == new_sen_len-1:
                             R_array.append(ingest[:,j])
@@ -60,11 +53,9 @@ def main():
                     for j in range(new_sen_len):
                         R = build_decoder(egest[:,j])
                         R_array.extend([R[:,:input_size//2], R[:,input_size//2:]])
-                    # egest = R_array
                     egest = tf.stack(R_array, axis=1)
                     new_sen_len *=2
             egest = egest[:,0:sen_len,:]
-	# original_sentence = tf.expand_dims(original_sentence, axis=1)
 	loss = tf.losses.mean_squared_error(labels=original_sentence, predictions=egest)
 
 	
@@ -72,8 +63,6 @@ def main():
 	sess = tf.InteractiveSession()
 	tf.global_variables_initializer().run()
 	writer = tf.summary.FileWriter("checkpoints/", sess.graph)
-	# import sys
-	# sys.exit(1)
 	print '*'*80
         for i in tf.trainable_variables():
             print(i)
@@ -87,10 +76,8 @@ def main():
 	train(sess, train_step, training_data, loss, input_size, num_epochs, ingest, egest)
 
 
-#input.get_shape() == (1, vector_size + padding)
 def build_encoder(inputs):
 	size = inputs.shape[1].value
-	#inputs = tf.expand_dims(inputs, axis=0)
 	with tf.name_scope('encoder') as scope:
             encoded = make_fc(inputs, size, "E_first")
             encoded2 = make_fc(encoded, 3*size//4, "E_second")
@@ -109,7 +96,6 @@ def build_decoder(inputs):
 
 def make_fc(input_tensor, output_size, name):
 	input_size = input_tensor.get_shape().as_list()[1]
-	# with tf.name_scope('FC') as scope:
         with tf.variable_scope('FC', reuse=tf.AUTO_REUSE):
             W = tf.get_variable(name+"weights",[input_size, output_size],tf.float32,
                                                     tf.random_normal_initializer(stddev=0.1))
