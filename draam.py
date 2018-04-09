@@ -11,8 +11,8 @@ def main():
 	word_vector_size = 300
 	padding = word_vector_size // 2
 	input_size = 2 * (word_vector_size + padding)
-	learning_rate = 0.0001
-	num_epochs = 150
+	learning_rate = 0.001
+	num_epochs = 500
 	sen_len = 30
 
 	print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
@@ -54,8 +54,8 @@ def main():
                     egest = tf.stack(R_array, axis=1)
                     new_sen_len *=2
             egest = egest[:,0:sen_len,:]
-	loss = tf.losses.mean_squared_error(labels=original_sentence, predictions=egest)
 
+	loss = tf.losses.mean_squared_error(labels=original_sentence, predictions=egest)
 	
 	train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 	sess = tf.InteractiveSession()
@@ -158,9 +158,8 @@ def train(sess, optimizer, data, loss, size, num_epochs, ingest, egest, orig):
 	print("Shape is: ")
 	print(data.shape)
 	for i in range(num_epochs):
-		_, train_loss, encoded, _ = sess.run([optimizer, loss, ingest, egest],
-				                    feed_dict={orig: data})
-		if i % 5 == 0:
+		_, train_loss, encoded, decoded = sess.run([optimizer, loss, ingest, egest], feed_dict={orig: data})
+		if i % 10 == 0:
 			print("Epoch: " + str(i))
 			print("Loss: " + str(train_loss))
 
