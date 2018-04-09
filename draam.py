@@ -12,7 +12,7 @@ def main():
 	padding = word_vector_size // 2
 	input_size = 2 * (word_vector_size + padding)
 	learning_rate = 0.001
-	num_epochs = 500
+	num_epochs = 400
 	sen_len = 30
 
 	print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
@@ -72,7 +72,10 @@ def main():
 	cut = (4 * len(sentence_dict.values())) // 5
 	training_data = sentence_dict.values()[0:cut]
 	testing_data = sentence_dict.values()[cut:]
-	train(sess, train_step, np.array(training_data), loss, input_size, num_epochs, ingest, egest, original_sentence)
+
+	# Where the magic happens
+	train(sess, train_step, np.array(training_data), loss, num_epochs, ingest, egest, original_sentence)
+	test(sess, np.array(testing_data), loss, ingest, egest, original_sentence)
 
 
 def build_encoder(inputs):
@@ -152,7 +155,7 @@ def parse_sentences(corpus):
 	return sentences
 
 
-def train(sess, optimizer, data, loss, size, num_epochs, ingest, egest, orig):
+def train(sess, optimizer, data, loss, num_epochs, ingest, egest, orig):
 	print("Training on %d groups per epoch" % len(data))
 	print("Training for %d epochs" % num_epochs)
 	print("Shape is: ")
@@ -164,25 +167,10 @@ def train(sess, optimizer, data, loss, size, num_epochs, ingest, egest, orig):
 			print("Loss: " + str(train_loss))
 
 # Testing loop
-def test(sess, epochs, data, decode, loss, input1, input2):
-	num_vectors_total = 0
-	total_correct = 0
+def test(sess, data, loss, ingest, egest, orig):
 	print("TESTING")
-	for i in range(epochs):
-		test_loss, my_decoded, orig = sess.run([loss, decode, inputs], feed_dict={inputs:data[i % len(data)]})
-
-		if i % (test_epochs / 10) == 0:
-			print(str((i / test_epochs) * 100) + " percent complete")
-
-		# Reporting
-		for original, decode in zip(orig, my_decoded):
-			num_vectors_total += 1
-			for truth, gen in zip(original, decode):
-				if abs(truth-gen) <= 0.1:
-					total_correct += 1
-
-	percent_correct = ((total_correct / num_vectors_total) * 100) / 300
-	print(percent_correct)
+	test_loss, _encoded, decoded = sess.run([loss, ingest, egest], feed_dict={orig: data})
+	print("Validation loss: " + str(test_loss))
 
 if __name__ == "__main__":
 	main()
