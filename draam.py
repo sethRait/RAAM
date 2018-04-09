@@ -36,8 +36,6 @@ def main():
                             R_array.append(ingest[:,j])
                         else:
                             temp = tf.concat([ingest[:,j], ingest[:,j+1]], axis=1)
-                            print("shape of temp is:")
-                            print(temp.get_shape())
                             R = build_encoder(temp)
                             R_array.append(R)
                     ingest = tf.stack(R_array, axis=1)
@@ -69,10 +67,11 @@ def main():
 	print '*'*80
 
 	sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
+
+	# use 4/5 of the sentences to train, and 1/5 to validate
 	cut = (4 * len(sentence_dict.values())) // 5
 	training_data = sentence_dict.values()[0:cut]
 	testing_data = sentence_dict.values()[cut:]
-	# quit()
 	train(sess, train_step, training_data, loss, input_size, num_epochs, ingest, egest)
 
 
@@ -83,8 +82,6 @@ def build_encoder(inputs):
             encoded2 = make_fc(encoded, 3*size//4, "E_second")
 	with tf.name_scope('center') as scope:
             center = make_fc(encoded2, size/2, "center")
-	print("shape of center is:")
-	print(center.get_shape())
 	return center
 
 def build_decoder(inputs):
@@ -111,6 +108,13 @@ def generate_samples(vectors, corpus, vec_size, pad):
 	for sentence in sentences:
 		res = get_vecs_from_sentence(sentence, word_dict)
 		if res is not None:
+			# Now we need the sentence to be length 30 (sentence.shape[0] == 30)
+			if res.shape[0] < 30:
+				padding = 30 - res.shape[0]
+				res = np.pad(res, [(0, padding), (0, 0)], mode='constant')
+			elif res.shape[0] > 30:
+				res = res[0:30]
+			print(res.shape)
 			sentence_dict[sentence] = res
 	return sentence_dict
 
