@@ -8,7 +8,7 @@ import re
 import math
 
 def main():
-	word_vector_size = 8
+	word_vector_size = 300
 	padding = word_vector_size // 2
 	input_size = 2 * (word_vector_size + padding)
 	learning_rate = 0.0001
@@ -18,8 +18,8 @@ def main():
 	print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
 	print("Learning rate: %f" % learning_rate)
 
-	vectors = "data/test_vectors.vec" # File of word vectors
-	corpus = "data/test_sentences.txt"
+	vectors = "data/wiki-news-300d-1M.vec" # File of word vectors
+	corpus = "data/austen.txt"
 
 	original_sentence = tf.placeholder(tf.float32, [None, sen_len, word_vector_size + padding])
 	ingest = original_sentence
