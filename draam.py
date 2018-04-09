@@ -72,7 +72,7 @@ def main():
 	cut = (4 * len(sentence_dict.values())) // 5
 	training_data = sentence_dict.values()[0:cut]
 	testing_data = sentence_dict.values()[cut:]
-	train(sess, train_step, training_data, loss, input_size, num_epochs, ingest, egest)
+	train(sess, train_step, np.array(training_data), loss, input_size, num_epochs, ingest, egest, original_sentence)
 
 
 def build_encoder(inputs):
@@ -114,7 +114,6 @@ def generate_samples(vectors, corpus, vec_size, pad):
 				res = np.pad(res, [(0, padding), (0, 0)], mode='constant')
 			elif res.shape[0] > 30:
 				res = res[0:30]
-			print(res.shape)
 			sentence_dict[sentence] = res
 	return sentence_dict
 
@@ -153,18 +152,14 @@ def parse_sentences(corpus):
 	return sentences
 
 
-#train(sess, train_step, training_data, loss, input_size, num_epochs, injest, egest)
-def train(sess, optimizer, data, loss, size, num_epochs, injest, egest):
+def train(sess, optimizer, data, loss, size, num_epochs, ingest, egest, orig):
 	print("Training on %d groups per epoch" % len(data))
 	print("Training for %d epochs" % num_epochs)
 	print("Shape is: ")
-	# print(data.shape)
-	quit()
+	print(data.shape)
 	for i in range(num_epochs):
-		for group in data: # A group is a collection of sentences of the same length
-			np.random.shuffle(group)
-			if group.ndim == 2: # if there is only one sentene in the group
-				group = np.reshape(group, (1, group.shape[0], group.shape[1]))
+		_, train_loss, encoded, _ = sess.run([optimizer, loss, ingest, egest],
+				                    feed_dict={orig: data})
 		if i % 5 == 0:
 			print("Epoch: " + str(i))
 			print("Loss: " + str(train_loss))
