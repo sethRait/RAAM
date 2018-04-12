@@ -6,6 +6,7 @@ import random
 import nltk.data
 import re
 import math
+from scipy import spatial
 
 def main():
 	word_vector_size = 300
@@ -170,6 +171,15 @@ def train(sess, optimizer, data, loss, num_epochs, ingest, egest, orig):
 def test(sess, data, loss, ingest, egest, orig):
 	print("TESTING")
 	test_loss, _encoded, decoded = sess.run([loss, ingest, egest], feed_dict={orig: data})
+	check_data = data[0]
+	check_output = decoded[0]
+	zipped = zip(check_data, check_output)
+	print("before:")
+	print(check_data[0])
+	print("after:")
+	print(check_output[0])
+	result = 1 - spatial.distance.cosine(check_data[0], check_output[0])
+	print("cosine: " + str(result))
 	print("Validation loss: " + str(test_loss))
 
 if __name__ == "__main__":
