@@ -61,10 +61,10 @@ def main(learning_rate):
 	sess = tf.InteractiveSession()
 	tf.global_variables_initializer().run()
 	writer = tf.summary.FileWriter("checkpoints/", sess.graph)
-	print '*'*80
-        for i in tf.trainable_variables():
-            print(i)
-	print '*'*80
+	#print '*'*80
+	#    for i in tf.trainable_variables():
+	#        print(i)
+	#print '*'*80
 
 	sentence_dict = generate_samples(vectors, corpus, word_vector_size, padding)
 
@@ -176,5 +176,6 @@ if __name__ == "__main__":
 	learning_rate = .001
 	for i in range(10):
 		main(learning_rate)
+		tf.reset_default_graph()
 		learning_rate *= 0.5	
 
