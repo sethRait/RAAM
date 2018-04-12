@@ -8,13 +8,12 @@ import re
 import math
 from scipy import spatial
 
-def main():
+def main(learning_rate):
 	word_vector_size = 300
 	padding = word_vector_size // 2
 	input_size = 2 * (word_vector_size + padding)
-	learning_rate = 0.001
-	num_epochs = 400
-	sen_len = 30
+	num_epochs = 500
+	sen_len = 32
 
 	print("Vector size: %d, with padding: %d" % (word_vector_size, padding))
 	print("Learning rate: %f" % learning_rate)
@@ -113,11 +112,11 @@ def generate_samples(vectors, corpus, vec_size, pad):
 		res = get_vecs_from_sentence(sentence, word_dict)
 		if res is not None:
 			# Now we need the sentence to be length 30 (sentence.shape[0] == 30)
-			if res.shape[0] < 30:
-				padding = 30 - res.shape[0]
+			if res.shape[0] < 32:
+				padding = 32 - res.shape[0]
 				res = np.pad(res, [(0, padding), (0, 0)], mode='constant')
-			elif res.shape[0] > 30:
-				res = res[0:30]
+			elif res.shape[0] > 32:
+				res = res[0:32]
 			sentence_dict[sentence] = res
 	return sentence_dict
 
@@ -133,7 +132,6 @@ def get_vecs_from_sentence(sentence, word_dict):
 
 # Parses the file containing vector representations of words
 def parse_word_vecs(vectors, vec_size, pad):
-	print("Parsing word vectors")
 	i = 1
 	dictionary = {}
 	with open(vectors) as fp:
@@ -149,7 +147,6 @@ def parse_word_vecs(vectors, vec_size, pad):
 
 # Parses the file containing the training and testing sentences
 def parse_sentences(corpus):
-	print("Parsing input sentences")
 	with open(corpus) as fp:
 		nltk.data.load('tokenizers/punkt/english.pickle')
 		sentences = nltk.sent_tokenize(fp.read().decode('utf-8'))
@@ -157,32 +154,27 @@ def parse_sentences(corpus):
 
 
 def train(sess, optimizer, data, loss, num_epochs, ingest, egest, orig):
-	print("Training on %d groups per epoch" % len(data))
-	print("Training for %d epochs" % num_epochs)
 	print("Shape is: ")
 	print(data.shape)
 	for i in range(num_epochs):
 		_, train_loss, encoded, decoded = sess.run([optimizer, loss, ingest, egest], feed_dict={orig: data})
-		if i % 10 == 0:
+		if i % 25 == 0:
 			print("Epoch: " + str(i))
 			print("Loss: " + str(train_loss))
 
 # Testing loop
 def test(sess, data, loss, ingest, egest, orig):
-	print("TESTING")
 	test_loss, _encoded, decoded = sess.run([loss, ingest, egest], feed_dict={orig: data})
 	check_data = data[0]
 	check_output = decoded[0]
 	zipped = zip(check_data, check_output)
-	print("before:")
-	print(check_data[0])
-	print("after:")
-	print(check_output[0])
 	result = 1 - spatial.distance.cosine(check_data[0], check_output[0])
 	print("cosine: " + str(result))
 	print("Validation loss: " + str(test_loss))
 
 if __name__ == "__main__":
-	main()
-
+	learning_rate = .001
+	for i in range(10):
+		main(learning_rate)
+		learning_rate *= 0.5	
 
